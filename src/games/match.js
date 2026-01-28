@@ -19,7 +19,7 @@ export function mountMatchGame(root, { storage, audio }) {
   let activeLevelNum = currentLevel;
 
   const header = el("div", { class: "stack", style: "margin-bottom:12px" });
-  const board = el("div", { class: "grid" });
+  const board = el("div", { class: "grid matchBoard", "data-mode": "" });
   const footer = el("div", { class: "stack", style: "margin-top:12px" });
   root.append(header, board, footer);
 
@@ -98,12 +98,13 @@ export function mountMatchGame(root, { storage, audio }) {
       ),
     );
 
-    // Initial preview.
-    await showAllBriefly(2200);
+    // Initial preview scales with level: 1 second per card.
+    await showAllBriefly(cards.length * 1000, "Memoriza…");
   }
 
-  async function showAllBriefly(ms) {
+  async function showAllBriefly(ms, label = "") {
     if (disposed) return;
+    setPreviewMode(true, label);
     const all = new Set(cards.map((_, i) => i));
     reveal = new Set([...reveal, ...all]);
     paint();
@@ -111,6 +112,27 @@ export function mountMatchGame(root, { storage, audio }) {
     // Keep matched ones visible.
     reveal = new Set([...matched]);
     paint();
+    setPreviewMode(false);
+  }
+
+  function setPreviewMode(on, label) {
+    if (on) {
+      lock = true;
+      board.classList.add("matchShowing");
+      board.setAttribute("data-mode", label || "Memoriza…");
+      board.querySelectorAll("button.tile").forEach((b) => b.setAttribute("disabled", "true"));
+      return;
+    }
+
+    board.classList.remove("matchShowing");
+    board.setAttribute("data-mode", "");
+    board.querySelectorAll("button.tile").forEach((b) => b.removeAttribute("disabled"));
+    // Keep matched tiles non-interactive.
+    matched.forEach((i) => {
+      const elBtn = board.querySelector(`button.tile[data-i="${i}"]`);
+      if (elBtn) elBtn.setAttribute("disabled", "true");
+    });
+    lock = false;
   }
 
   async function onPick(i) {

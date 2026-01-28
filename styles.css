@@ -23,7 +23,7 @@
 
   --radius: 18px;
   --radius-sm: 14px;
-  --tap: 48px;
+  --tap: 44px;
 
   --font-scale: 1;
   --motion-ok: 1;
@@ -60,6 +60,16 @@ body {
   box-sizing: border-box;
 }
 
+/* Mobile ergonomics: reduce double-tap zoom on controls. */
+button,
+.btn,
+.navbtn,
+.tile,
+.gameCard {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
 .app {
   min-height: 100vh;
 }
@@ -88,7 +98,7 @@ body {
   border-radius: 999px;
   padding: 8px 12px;
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   color: rgba(17, 24, 39, 0.82);
   background: rgba(255, 255, 255, 0.9);
   border: 1px solid var(--border);
@@ -147,8 +157,8 @@ body {
   background: linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(248, 250, 252, 1));
   color: var(--text);
   border-radius: 14px;
-  padding: 10px 12px;
-  font-size: 0.96rem;
+  padding: 8px 10px;
+  font-size: 0.93rem;
   font-weight: 700;
   line-height: 1.1;
   width: 100%;
@@ -199,8 +209,8 @@ body {
 
 .btn.small {
   min-height: 44px;
-  padding: 9px 10px;
-  font-size: 0.94rem;
+  padding: 7px 9px;
+  font-size: 0.9rem;
 }
 
 .card {
@@ -345,13 +355,13 @@ body {
 
 .gameTitle {
   font-weight: 900;
-  font-size: 1.06rem;
+  font-size: 1.02rem;
   letter-spacing: 0.2px;
   color: var(--text);
 }
 
 .gameSubtitle {
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   color: var(--muted);
 }
 
@@ -388,11 +398,11 @@ body {
 }
 
 .navbtn {
-  min-height: 46px;
+  min-height: 42px;
   border-radius: 14px;
   border: 1px solid var(--border);
   background: linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(248, 250, 252, 1));
-  font-size: 0.94rem;
+  font-size: 0.9rem;
   font-weight: 700;
   transition:
     transform calc(160ms * var(--motion-ok)) ease,
@@ -454,11 +464,123 @@ body {
 .simonBoard.simonShowing .simonPad {
   opacity: 0.55;
   filter: saturate(0.9);
+  pointer-events: none;
 }
 
 .simonBoard.simonShowing .simonPad.isActive {
   opacity: 1;
   filter: brightness(1.12) saturate(1.22);
+}
+
+/* Mode overlays: big overlay while watching, small badge on your turn. */
+.simonBoard {
+  position: relative;
+  padding-top: 30px;
+}
+
+/* Match: clear preview overlay while memorizing. */
+.matchBoard {
+  position: relative;
+}
+
+.matchBoard::after {
+  content: attr(data-mode);
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 18px;
+  border-radius: var(--radius);
+  background: rgba(17, 24, 39, 0.08);
+  color: rgba(17, 24, 39, 0.92);
+  font-weight: 900;
+  letter-spacing: 0.2px;
+  opacity: 0;
+  transform: translate3d(0, 6px, 0);
+  transition:
+    opacity calc(200ms * var(--motion-ok)) ease,
+    transform calc(200ms * var(--motion-ok)) ease;
+  pointer-events: none;
+}
+
+.matchBoard.matchShowing::after {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+.matchBoard.matchShowing .tile {
+  pointer-events: none;
+}
+
+.simonBoard::after {
+  content: attr(data-mode);
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translate3d(-50%, 6px, 0);
+  padding: 9px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-soft);
+  color: rgba(17, 24, 39, 0.92);
+  font-weight: 900;
+  letter-spacing: 0.2px;
+  text-align: center;
+  opacity: 0;
+  transition:
+    opacity calc(200ms * var(--motion-ok)) ease,
+    transform calc(200ms * var(--motion-ok)) ease;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.simonBoard.simonShowing::after {
+  opacity: 1;
+  transform: translate3d(-50%, 0, 0);
+}
+
+.simonBoard::before {
+  content: attr(data-turn);
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translate3d(-50%, 6px, 0);
+  padding: 9px 12px;
+  border-radius: 999px;
+  background:
+    radial-gradient(120px 70px at 22% 20%, rgba(255, 255, 255, 0.22), transparent 60%),
+    linear-gradient(180deg, var(--primary), var(--primary-2));
+  color: #ffffff;
+  font-weight: 900;
+  font-size: 0.88rem;
+  letter-spacing: 0.2px;
+  box-shadow: 0 10px 22px rgba(15, 118, 110, 0.22);
+  opacity: 0;
+  transition:
+    opacity calc(200ms * var(--motion-ok)) ease,
+    transform calc(200ms * var(--motion-ok)) ease;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.simonBoard.simonTurn::before {
+  opacity: 1;
+  transform: translate3d(-50%, 0, 0);
+  animation: turnPulse calc(1200ms * var(--motion-ok)) ease-in-out infinite;
+}
+
+@keyframes turnPulse {
+  0% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.08);
+  }
+  100% {
+    filter: brightness(1);
+  }
 }
 
 .simonPad {
@@ -511,6 +633,57 @@ body {
   line-height: 1.35;
 }
 
+.msg--ok {
+  border-color: rgba(15, 118, 110, 0.35);
+  background: rgba(15, 118, 110, 0.10);
+}
+
+.msg--bad {
+  border-color: rgba(180, 35, 24, 0.35);
+  background: rgba(180, 35, 24, 0.10);
+}
+
+.simonBoard.simonBad {
+  animation: shake calc(420ms * var(--motion-ok)) ease-in-out;
+}
+
+.simonBoard.simonOk {
+  animation: pulseOk calc(420ms * var(--motion-ok)) ease-in-out;
+}
+
+@keyframes shake {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  20% {
+    transform: translate3d(-6px, 0, 0);
+  }
+  40% {
+    transform: translate3d(6px, 0, 0);
+  }
+  60% {
+    transform: translate3d(-4px, 0, 0);
+  }
+  80% {
+    transform: translate3d(4px, 0, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes pulseOk {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .panel,
   .nav {
@@ -528,7 +701,7 @@ body {
 
 @media (any-pointer: coarse) {
   :root {
-    --tap: 50px;
+    --tap: 46px;
   }
 }
 
