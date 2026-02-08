@@ -7,9 +7,9 @@ export async function renderSettings(root, { getSettings, setSettings, navigate 
     el("header", { class: "hero" }, [
       el("div", { class: "heroTop" }, [
         el("h1", { class: "title", text: "Ajustes" }),
-        el("span", { class: "chip" }, "Preferencias"),
+        el("span", { class: "chip" }, "Personaliza"),
       ]),
-      el("p", { class: "subtitle", text: "Hazlo más cómodo para jugar." }),
+      el("p", { class: "subtitle", text: "Ajusta el tamano, sonido y movimiento para jugar comodo." }),
     ]),
   );
 
@@ -18,8 +18,8 @@ export async function renderSettings(root, { getSettings, setSettings, navigate 
 
   panel.append(
     settingGroup(
-      "Tamaño de texto",
-      "Texto más grande: más fácil de leer y tocar.",
+      "Tamano de texto",
+      "Sube el tamano si prefieres leer con menos esfuerzo.",
       segmented({
         options: [
           { label: "Normal", value: 1 },
@@ -27,90 +27,99 @@ export async function renderSettings(root, { getSettings, setSettings, navigate 
           { label: "Muy grande", value: 1.25 },
         ],
         value: s.textScale,
+        ariaLabel: "Tamano de texto",
         onChange: (v) => setSettings({ ...getSettings(), textScale: v }),
       }),
     ),
     settingGroup(
       "Sonidos",
-      "Sonidos suaves al acertar.",
+      "Activa tonos suaves cuando aciertas.",
       toggle({
-        labelOn: "Sí",
-        labelOff: "No",
+        labelOn: "Activado",
+        labelOff: "Silencio",
         value: s.sound,
+        ariaLabel: "Sonidos",
         onChange: (v) => setSettings({ ...getSettings(), sound: v }),
       }),
     ),
     settingGroup(
       "Reducir movimiento",
-      "Menos animaciones en pantalla.",
+      "Disminuye animaciones para una vista mas estable.",
       toggle({
-        labelOn: "Sí",
-        labelOff: "No",
+        labelOn: "Reducido",
+        labelOff: "Normal",
         value: s.reduceMotion,
+        ariaLabel: "Reducir movimiento",
         onChange: (v) => setSettings({ ...getSettings(), reduceMotion: v }),
       }),
     ),
-    el(
-      "button",
-      { class: "btn small", type: "button", onclick: () => navigate("home") },
-      "Volver a Inicio",
-    ),
+    el("button", { class: "btn small", type: "button", onclick: () => navigate("home") }, "Volver al inicio"),
   );
 
   return () => {};
 }
 
 function settingGroup(title, hint, control) {
-  return el("div", { class: "panel card" }, [
-    el("div", { class: "row" }, [
-      el("div", {}, [
-        el("div", { class: "label", text: title }),
-        el("div", { class: "hint", text: hint }),
-      ]),
-    ]),
-    el("div", { style: "margin-top:12px" }, control),
+  return el("div", { class: "settingCard" }, [
+    el("div", { class: "label", text: title }),
+    el("div", { class: "hint", text: hint }),
+    el("div", { class: "settingControl" }, control),
   ]);
 }
 
-function segmented({ options, value, onChange }) {
-  const wrap = el("div", { class: "grid", style: "grid-template-columns: 1fr 1fr 1fr" });
+function segmented({ options, value, onChange, ariaLabel }) {
+  const wrap = el("div", {
+    class: "choiceGrid cols-3",
+    role: "group",
+    "aria-label": ariaLabel,
+  });
+
   for (const opt of options) {
     const selected = nearlyEqual(opt.value, value);
-    const btn = el(
-      "button",
-      {
-        class: `btn small ${selected ? "primary" : ""}`,
-        type: "button",
-        onclick: () => onChange(opt.value),
-      },
-      opt.label,
+    wrap.append(
+      el(
+        "button",
+        {
+          class: `btn small ${selected ? "primary" : ""}`,
+          type: "button",
+          "aria-pressed": selected ? "true" : "false",
+          onclick: () => onChange(opt.value),
+        },
+        opt.label,
+      ),
     );
-    wrap.append(btn);
   }
+
   return wrap;
 }
 
-function toggle({ value, onChange, labelOn, labelOff }) {
-  return el("div", { class: "grid", style: "grid-template-columns: 1fr 1fr" }, [
-    el(
-      "button",
-      {
-        class: `btn small ${value ? "primary" : ""}`,
-        type: "button",
-        onclick: () => onChange(true),
-      },
-      labelOn,
-    ),
-    el(
-      "button",
-      {
-        class: `btn small ${!value ? "primary" : ""}`,
-        type: "button",
-        onclick: () => onChange(false),
-      },
-      labelOff,
-    ),
-  ]);
+function toggle({ value, onChange, labelOn, labelOff, ariaLabel }) {
+  return el(
+    "div",
+    { class: "choiceGrid cols-2", role: "group", "aria-label": ariaLabel },
+    [
+      el(
+        "button",
+        {
+          class: `btn small ${value ? "primary" : ""}`,
+          type: "button",
+          "aria-pressed": value ? "true" : "false",
+          onclick: () => onChange(true),
+        },
+        labelOn,
+      ),
+      el(
+        "button",
+        {
+          class: `btn small ${!value ? "primary" : ""}`,
+          type: "button",
+          "aria-pressed": !value ? "true" : "false",
+          onclick: () => onChange(false),
+        },
+        labelOff,
+      ),
+    ],
+  );
 }
 
 function nearlyEqual(a, b) {

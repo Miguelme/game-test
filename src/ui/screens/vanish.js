@@ -6,7 +6,7 @@ export async function renderVanish(root, api) {
     el("header", { class: "hero" }, [
       el("div", { class: "heroTop" }, [
         el("h1", { class: "title", text: "El objeto que falta" }),
-        el("span", { class: "chip" }, "Atencion"),
+        el("span", { class: "chip" }, "Atención"),
       ]),
       el("p", { class: "subtitle", text: "Recuerda los objetos. Uno desaparece. ¿Cuál falta?" }),
     ]),

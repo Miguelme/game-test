@@ -42,18 +42,17 @@ export function mountSimonGame(root, { storage, audio }) {
   });
   pads.forEach((p) => board.append(p));
 
-  footer.append(
-    el(
-      "button",
-      { class: "btn small", type: "button", onclick: () => showSequence() },
-      "Mostrar otra vez",
-    ),
-    el(
-      "button",
-      { class: "btn small", type: "button", onclick: () => startOver() },
-      "Reiniciar",
-    ),
+  const replayBtn = el(
+    "button",
+    { class: "btn small", type: "button", onclick: () => showSequence() },
+    "Mostrar otra vez",
   );
+  const restartBtn = el(
+    "button",
+    { class: "btn small", type: "button", onclick: () => startOver() },
+    "Reiniciar",
+  );
+  footer.append(replayBtn, restartBtn);
 
   startOver();
 
@@ -64,6 +63,7 @@ export function mountSimonGame(root, { storage, audio }) {
       board.classList.add("simonShowing");
       board.classList.remove("simonTurn");
       pads.forEach((p) => p.setAttribute("disabled", "true"));
+      replayBtn.setAttribute("disabled", "true");
       return;
     }
 
@@ -73,6 +73,7 @@ export function mountSimonGame(root, { storage, audio }) {
       board.classList.remove("simonShowing");
       board.classList.add("simonTurn");
       pads.forEach((p) => p.removeAttribute("disabled"));
+      replayBtn.removeAttribute("disabled");
       return;
     }
 
@@ -82,6 +83,7 @@ export function mountSimonGame(root, { storage, audio }) {
     board.classList.remove("simonShowing");
     board.classList.remove("simonTurn");
     pads.forEach((p) => p.removeAttribute("disabled"));
+    replayBtn.removeAttribute("disabled");
   }
 
   async function startOver() {
@@ -104,7 +106,7 @@ export function mountSimonGame(root, { storage, audio }) {
       el(
         "div",
         { class: msgClass },
-        msg ?? '1) Mira la secuencia. 2) Toca las flores en el mismo orden. 3) Pulsa "Mostrar otra vez" cuando quieras.',
+        msg ?? '1) Mira la secuencia. 2) Toca las flores en el mismo orden. 3) Pulsa "Mostrar otra vez" si lo necesitas.',
       ),
     );
   }

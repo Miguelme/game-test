@@ -1,14 +1,21 @@
 import { clear, el } from "./dom.js";
 
 export function createAppShell(root, { getSettings, setSettings }) {
-  const screen = el("main", { class: "screen" });
-  const nav = el("nav", { class: "nav", role: "navigation", "aria-label": "Main" });
+  root.classList.add("appShell");
 
-  const homeBtn = el("button", {
-    class: "navbtn",
-    type: "button",
-    onclick: () => (window.location.hash = "#/home"),
-  }, "Inicio");
+  const screen = el("main", { class: "screen" });
+  const nav = el("nav", { class: "nav", role: "navigation", "aria-label": "Navegacion principal" });
+
+  const homeBtn = el(
+    "button",
+    {
+      class: "navbtn",
+      type: "button",
+      onclick: () => (window.location.hash = "#/home"),
+    },
+    "Inicio",
+  );
+
   const settingsBtn = el(
     "button",
     {
@@ -46,46 +53,68 @@ export function createAppShell(root, { getSettings, setSettings }) {
 
   function showRestPrompt({ onStop, onContinue }) {
     if (overlay) return;
-    overlay = el("div", { class: "overlay", role: "dialog", "aria-modal": "true" });
+
+    const titleId = "rest-title";
+    const descId = "rest-desc";
+
+    overlay = el("div", {
+      class: "overlay",
+      role: "dialog",
+      "aria-modal": "true",
+      "aria-labelledby": titleId,
+      "aria-describedby": descId,
+    });
+
     const modal = el("div", { class: "panel modal" });
-    modal.append(
-      el("h2", { text: "Muy bien." }),
-      el("p", { text: "¿Quieres descansar o jugar un poco más?" }),
-      el(
-        "div",
-        { class: "actions" },
-        [
-          el(
-            "button",
-            {
-              class: "btn primary",
-              type: "button",
-              onclick: () => {
-                close();
-                onContinue();
-              },
-            },
-            "Continuar",
-          ),
-          el(
-            "button",
-            {
-              class: "btn",
-              type: "button",
-              onclick: () => {
-                close();
-                onStop();
-              },
-            },
-            "Descansar",
-          ),
-        ],
-      ),
+
+    const continueBtn = el(
+      "button",
+      {
+        class: "btn primary",
+        type: "button",
+        onclick: () => {
+          close();
+          onContinue();
+        },
+      },
+      "Continuar",
     );
+
+    const stopBtn = el(
+      "button",
+      {
+        class: "btn",
+        type: "button",
+        onclick: () => {
+          close();
+          onStop();
+        },
+      },
+      "Descansar",
+    );
+
+    modal.append(
+      el("h2", { id: titleId, text: "Muy bien." }),
+      el("p", { id: descId, text: "Quieres descansar o jugar un poco mas?" }),
+      el("div", { class: "actions" }, [continueBtn, stopBtn]),
+    );
+
     overlay.append(modal);
     document.body.append(overlay);
+    window.setTimeout(() => continueBtn.focus(), 0);
+
+    function onEscape(event) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        close();
+        onStop();
+      }
+    }
+
+    document.addEventListener("keydown", onEscape);
 
     function close() {
+      document.removeEventListener("keydown", onEscape);
       overlay?.remove();
       overlay = null;
     }

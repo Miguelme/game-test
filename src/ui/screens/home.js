@@ -5,52 +5,91 @@ export async function renderHome(root, { navigate, storage }) {
   const vanish = storage.getProgress("vanish");
   const simon = storage.getProgress("simon");
 
-  const today = new Date().toLocaleDateString();
+  const games = [
+    {
+      id: "match",
+      title: "Parejas",
+      subtitle: "Encuentra dos dibujos iguales",
+      progress: match,
+      bestLabel: match.bestLevel ? `Nivel ${match.bestLevel}` : "Nuevo",
+      tone: "teal",
+      icon: iconCards(),
+    },
+    {
+      id: "vanish",
+      title: "Objeto que falta",
+      subtitle: "Uno desaparece. Cual falta?",
+      progress: vanish,
+      bestLabel: vanish.bestLevel ? `Nivel ${vanish.bestLevel}` : "Nuevo",
+      tone: "amber",
+      icon: iconEye(),
+    },
+    {
+      id: "simon",
+      title: "Jardin de Simon",
+      subtitle: "Repite la secuencia",
+      progress: simon,
+      bestLabel: simon.bestLen ? `Longitud ${simon.bestLen}` : "Nuevo",
+      tone: "coral",
+      icon: iconFlower(),
+    },
+  ];
+
+  const lastGame = games
+    .filter((g) => g.progress?.lastPlayedAt)
+    .sort((a, b) => b.progress.lastPlayedAt - a.progress.lastPlayedAt)[0];
 
   root.append(
     el("header", { class: "hero" }, [
       el("div", { class: "heroTop" }, [
         el("h1", { class: "title", text: "Juegos de Memoria" }),
-        el("span", { class: "chip" }, `Hoy: ${today}`),
+        el("span", { class: "chip" }, formatLongDate(new Date())),
       ]),
-      el("p", { class: "subtitle", text: "Elige un juego y juega a tu ritmo." }),
+      el("p", { class: "subtitle", text: "Tres juegos cortos para entrenar memoria y atencion." }),
+      el("div", { class: "heroStats" }, [
+        el("span", { class: "badge" }, `Parejas: ${games[0].bestLabel}`),
+        el("span", { class: "badge" }, `Objeto: ${games[1].bestLabel}`),
+        el("span", { class: "badge" }, `Simon: ${games[2].bestLabel}`),
+      ]),
+    ]),
+  );
+
+  if (lastGame) {
+    root.append(
+      el("section", { class: "panel banner stack" }, [
+        el("div", { class: "row" }, [
+          el("div", { class: "stack compact" }, [
+            el("div", { class: "bannerTitle", text: "Continuar" }),
+            el("div", { class: "hint", text: `Ultima sesion: ${lastGame.title} (${formatShortDate(lastGame.progress.lastPlayedAt)})` }),
+          ]),
+          el("span", { class: "badge" }, lastGame.bestLabel),
+        ]),
+        el("button", { class: "btn primary", type: "button", onclick: () => navigate(lastGame.id) }, `Jugar ${lastGame.title}`),
+      ]),
+    );
+  }
+
+  root.append(
+    el("section", { class: "panel card stack" }, [
+      el("div", { class: "label", text: "Juegos" }),
+      el("div", { class: "gameList" }, games.map((game) => gameCard({
+        title: game.title,
+        subtitle: game.subtitle,
+        meta: buildMeta(game),
+        tone: game.tone,
+        icon: game.icon,
+        onClick: () => navigate(game.id),
+      }))),
     ]),
   );
 
   root.append(
     el("section", { class: "panel card stack" }, [
-      el("div", { class: "tip" }, [
-        el("span", { class: "tipDot", "aria-hidden": "true" }, ""),
-        el("div", {}, [
-          el("div", { class: "tipTitle", text: "Consejo" }),
-          el("div", { class: "hint", text: "Unos minutos al día es suficiente. Puedes parar cuando quieras." }),
-        ]),
-      ]),
-      el("div", { class: "gameList" }, [
-        gameCard({
-          title: "Parejas",
-          subtitle: "Encuentra dos dibujos iguales",
-          meta: match.bestLevel ? `Mejor: ${match.bestLevel}` : "",
-          tone: "teal",
-          icon: iconCards(),
-          onClick: () => navigate("match"),
-        }),
-        gameCard({
-          title: "El objeto que falta",
-          subtitle: "Uno desaparece. ¿Cuál falta?",
-          meta: vanish.bestLevel ? `Mejor: ${vanish.bestLevel}` : "",
-          tone: "amber",
-          icon: iconEye(),
-          onClick: () => navigate("vanish"),
-        }),
-        gameCard({
-          title: "Jardín de Simón",
-          subtitle: "Repite la secuencia",
-          meta: simon.bestLen ? `Mejor: ${simon.bestLen}` : "",
-          tone: "coral",
-          icon: iconFlower(),
-          onClick: () => navigate("simon"),
-        }),
+      el("div", { class: "label", text: "Progreso" }),
+      el("div", { class: "statGrid" }, [
+        stat("Parejas", games[0].bestLabel),
+        stat("Objeto", games[1].bestLabel),
+        stat("Simon", games[2].bestLabel),
       ]),
     ]),
   );
@@ -71,11 +110,36 @@ function gameCard({ title, subtitle, meta, icon, onClick, tone }) {
       el("span", { class: "gameText" }, [
         el("span", { class: "gameTitle", text: title }),
         el("span", { class: "gameSubtitle", text: subtitle }),
-        meta ? el("span", { class: "gameMeta", text: meta }) : null,
+        el("span", { class: "gameMeta", text: meta }),
       ]),
-      el("span", { class: "gameArrow", "aria-hidden": "true" }, "›"),
+      el("span", { class: "gameArrow", "aria-hidden": "true" }, "→"),
     ],
   );
+}
+
+function buildMeta(game) {
+  const bits = [game.bestLabel];
+  if (game.progress?.lastPlayedAt) {
+    bits.push(`Ultima vez ${formatShortDate(game.progress.lastPlayedAt)}`);
+  }
+  return bits.join(" · ");
+}
+
+function formatShortDate(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  return date.toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+}
+
+function formatLongDate(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  return date.toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function stat(label, value) {
+  return el("div", { class: "stat" }, [
+    el("div", { class: "statLabel", text: label }),
+    el("div", { class: "statValue", text: value }),
+  ]);
 }
 
 function iconCards() {

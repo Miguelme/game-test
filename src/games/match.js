@@ -55,10 +55,10 @@ export function mountMatchGame(root, { storage, audio }) {
 
     header.append(
       el("div", { class: "row" }, [
-        el("span", { class: "pill" }, `Level ${spec.level}`),
-        el("span", { class: "pill" }, `Parejas: ${matchedCount}/${totalPairs}`),
+        el("span", { class: "pill" }, `Nivel ${spec.level} de ${LEVELS.length}`),
+        el("span", { class: "pill" }, `Parejas: ${matchedCount} / ${totalPairs}`),
       ]),
-      el("div", { class: "msg" }, "Las cartas se veran un momento al empezar."),
+      el("div", { class: "msg" }, "Las cartas se verán un momento al empezar."),
     );
 
     board.style.gridTemplateColumns = `repeat(${spec.cols}, 1fr)`;
@@ -67,26 +67,30 @@ export function mountMatchGame(root, { storage, audio }) {
         class: "tile",
         type: "button",
         "data-i": String(i),
-        "aria-label": "Card",
+        "aria-label": "Carta",
         onclick: () => onPick(i),
       });
       board.append(btn);
     }
 
-    footer.append(
-      el(
-        "button",
-        {
-          class: "btn small",
-          type: "button",
-          onclick: () => {
-            if (hintUsed) return;
-            hintUsed = true;
-            showAllBriefly(1200);
-          },
+    const hintBtn = el(
+      "button",
+      {
+        class: "btn small",
+        type: "button",
+        onclick: () => {
+          if (hintUsed) return;
+          hintUsed = true;
+          hintBtn.setAttribute("disabled", "true");
+          hintBtn.textContent = "Pista usada";
+          showAllBriefly(1200);
         },
-        "Ver una pista",
-      ),
+      },
+      "Ver una pista",
+    );
+
+    footer.append(
+      hintBtn,
       el(
         "button",
         {
@@ -94,7 +98,7 @@ export function mountMatchGame(root, { storage, audio }) {
           type: "button",
           onclick: () => renderLevel(levelNum),
         },
-        "Reiniciar",
+        "Reiniciar nivel",
       ),
     );
 
@@ -180,7 +184,7 @@ export function mountMatchGame(root, { storage, audio }) {
 
   function updateHeader() {
     const pills = header.querySelectorAll(".pill");
-    if (pills[1]) pills[1].textContent = `Parejas: ${matchedCount}/${totalPairs}`;
+    if (pills[1]) pills[1].textContent = `Parejas: ${matchedCount} / ${totalPairs}`;
   }
 
   function paint() {
@@ -189,7 +193,7 @@ export function mountMatchGame(root, { storage, audio }) {
       const i = Number(node.getAttribute("data-i"));
       const isUp = reveal.has(i);
       const isDone = matched.has(i);
-      node.setAttribute("aria-label", isUp ? cards[i].label : "Card");
+      node.setAttribute("aria-label", isUp ? cards[i].label : "Carta");
       node.setAttribute("aria-disabled", isDone ? "true" : "false");
       node.innerHTML = isUp ? cards[i].svg : `<div class="back" aria-hidden="true"></div>`;
       node.style.opacity = isDone ? "0.82" : "1";
@@ -201,6 +205,7 @@ export function mountMatchGame(root, { storage, audio }) {
     const p = storage.getProgress("match");
     const nextBest = Math.max(p.bestLevel ?? 0, levelNum);
     const nextCurrent = clamp(levelNum + 1, 1, LEVELS.length);
+    const isLast = levelNum >= LEVELS.length;
     storage.setProgress("match", {
       ...p,
       bestLevel: nextBest,
@@ -209,15 +214,19 @@ export function mountMatchGame(root, { storage, audio }) {
     });
 
     footer.prepend(
-      el("div", { class: "msg" }, "Muy bien. Quieres probar el siguiente nivel?"),
+      el(
+        "div",
+        { class: "msg" },
+        isLast ? "¡Excelente! Has completado todos los niveles." : "Muy bien. ¿Quieres probar el siguiente nivel?",
+      ),
       el(
         "button",
         {
           class: "btn primary",
           type: "button",
-          onclick: () => renderLevel(nextCurrent),
+          onclick: () => renderLevel(isLast ? levelNum : nextCurrent),
         },
-        "Siguiente nivel",
+        isLast ? "Jugar otra vez" : "Siguiente nivel",
       ),
     );
   }

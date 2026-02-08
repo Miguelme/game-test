@@ -8,6 +8,7 @@ export function mountVanishGame(root, { storage, audio }) {
   let missing = null;
   let stage = "start"; // start | question | result
   let questionState = null;
+  let hintUsed = false;
 
   const progress = storage.getProgress("vanish");
   let level = clamp(progress.currentLevel ?? 3, 3, 5);
@@ -24,13 +25,14 @@ export function mountVanishGame(root, { storage, audio }) {
     stage = "start";
     clear(header);
     clear(panel);
+    hintUsed = false;
 
     header.append(
       el("div", { class: "row" }, [
-        el("span", { class: "pill" }, `Items: ${level}`),
-        el("span", { class: "pill" }, `Streak: ${correctStreak}`),
+        el("span", { class: "pill" }, `Objetos: ${level}`),
+        el("span", { class: "pill" }, `Racha: ${correctStreak}`),
       ]),
-      el("div", { class: "msg" }, "Mira los objetos. Cuando estes listo, toca Listo."),
+      el("div", { class: "msg" }, "Mira los objetos. Cuando estés listo, toca Listo."),
     );
 
     roundItems = shuffle(ICONS).slice(0, level);
@@ -77,9 +79,24 @@ export function mountVanishGame(root, { storage, audio }) {
       grid.append(el("div", { class: "tile", role: "img", "aria-label": it.label }, html(it.svg)));
     }
 
+    const hintBtn = el(
+      "button",
+      {
+        class: "btn small inline",
+        type: "button",
+        disabled: hintUsed,
+        onclick: () => showHint(),
+      },
+      hintUsed ? "Pista usada" : "Ver objetos otra vez",
+    );
+
     panel.append(
       el("div", { class: "msg" }, "¿Cuál objeto falta?"),
       grid,
+      el("div", { class: "row" }, [
+        el("div", { class: "hint", text: "¿Necesitas mirar otra vez?" }),
+        hintBtn,
+      ]),
       options(questionState.optionsList, (picked) => onPick(picked)),
     );
   }
@@ -93,7 +110,7 @@ export function mountVanishGame(root, { storage, audio }) {
       correctStreak += 1;
       persist(true);
       maybeLevelUp();
-      panel.prepend(el("div", { class: "msg" }, "Sí. Muy bien."));
+      panel.prepend(el("div", { class: "msg" }, "Sí, muy bien."));
       panel.append(
         el(
           "div",
@@ -172,6 +189,25 @@ export function mountVanishGame(root, { storage, audio }) {
       lastWasCorrect: wasCorrect,
       lastPlayedAt: Date.now(),
     });
+  }
+
+  async function showHint() {
+    if (disposed || stage !== "question" || hintUsed) return;
+    hintUsed = true;
+    stage = "hint";
+    clear(panel);
+
+    const grid = el("div", { class: "grid", style: "grid-template-columns: 1fr 1fr 1fr" });
+    for (const it of roundItems) {
+      grid.append(el("div", { class: "tile", role: "img", "aria-label": it.label }, html(it.svg)));
+    }
+
+    panel.append(el("div", { class: "msg" }, "Mira otra vez."), grid);
+    audio.warm();
+    await sleep(1400);
+    if (disposed) return;
+    stage = "question";
+    askQuestion();
   }
 
   return () => {
