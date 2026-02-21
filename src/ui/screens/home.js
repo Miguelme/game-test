@@ -9,7 +9,7 @@ export async function renderHome(root, { navigate, storage }) {
     {
       id: "match",
       title: "Parejas",
-      subtitle: "Encuentra dos dibujos iguales",
+      subtitle: "Encuentra dos imagenes iguales",
       progress: match,
       bestLabel: match.bestLevel ? `Nivel ${match.bestLevel}` : "Nuevo",
       tone: "teal",
@@ -18,7 +18,7 @@ export async function renderHome(root, { navigate, storage }) {
     {
       id: "vanish",
       title: "Objeto que falta",
-      subtitle: "Uno desaparece. Cual falta?",
+      subtitle: "Recuerda los objetos y detecta el que falta",
       progress: vanish,
       bestLabel: vanish.bestLevel ? `Nivel ${vanish.bestLevel}` : "Nuevo",
       tone: "amber",
@@ -27,7 +27,7 @@ export async function renderHome(root, { navigate, storage }) {
     {
       id: "simon",
       title: "Jardin de Simon",
-      subtitle: "Repite la secuencia",
+      subtitle: "Repite la secuencia de colores",
       progress: simon,
       bestLabel: simon.bestLen ? `Longitud ${simon.bestLen}` : "Nuevo",
       tone: "coral",
@@ -40,53 +40,73 @@ export async function renderHome(root, { navigate, storage }) {
     .sort((a, b) => b.progress.lastPlayedAt - a.progress.lastPlayedAt)[0];
 
   root.append(
-    el("header", { class: "hero" }, [
+    el("header", { class: "hero hero--home" }, [
       el("div", { class: "heroTop" }, [
         el("h1", { class: "title", text: "Juegos de Memoria" }),
         el("span", { class: "chip" }, formatLongDate(new Date())),
-      ]),
-      el("p", { class: "subtitle", text: "Tres juegos cortos para entrenar memoria y atencion." }),
-      el("div", { class: "heroStats" }, [
-        el("span", { class: "badge" }, `Parejas: ${games[0].bestLabel}`),
-        el("span", { class: "badge" }, `Objeto: ${games[1].bestLabel}`),
-        el("span", { class: "badge" }, `Simon: ${games[2].bestLabel}`),
       ]),
     ]),
   );
 
   if (lastGame) {
     root.append(
-      el("section", { class: "panel banner stack" }, [
-        el("div", { class: "row" }, [
-          el("div", { class: "stack compact" }, [
-            el("div", { class: "bannerTitle", text: "Continuar" }),
-            el("div", { class: "hint", text: `Ultima sesion: ${lastGame.title} (${formatShortDate(lastGame.progress.lastPlayedAt)})` }),
+      el("details", { class: "panel banner collapseToggle" }, [
+        el("summary", { class: "collapseSummary" }, "Continuar"),
+        el("div", { class: "collapseBody stack" }, [
+          el("div", { class: "row" }, [
+            el("div", { class: "stack compact" }, [
+              el("p", {
+                class: "hint",
+                text: `Ultima sesion: ${lastGame.title} (${formatShortDate(lastGame.progress.lastPlayedAt)})`,
+              }),
+            ]),
+            el("span", { class: "badge" }, lastGame.bestLabel),
           ]),
-          el("span", { class: "badge" }, lastGame.bestLabel),
+          el(
+            "button",
+            { class: "btn primary", type: "button", onclick: () => navigate(lastGame.id) },
+            `Jugar ${lastGame.title}`,
+          ),
         ]),
-        el("button", { class: "btn primary", type: "button", onclick: () => navigate(lastGame.id) }, `Jugar ${lastGame.title}`),
       ]),
     );
   }
 
   root.append(
-    el("section", { class: "panel card stack" }, [
-      el("div", { class: "label", text: "Juegos" }),
-      el("div", { class: "gameList" }, games.map((game) => gameCard({
-        title: game.title,
-        subtitle: game.subtitle,
-        meta: buildMeta(game),
-        tone: game.tone,
-        icon: game.icon,
-        onClick: () => navigate(game.id),
-      }))),
+    el("details", { class: "panel card collapseToggle" }, [
+      el("summary", { class: "collapseSummary" }, "Como funciona"),
+      el("ol", { class: "steps collapseBody" }, [
+        el("li", { text: "Elige un juego." }),
+        el("li", { text: "Lee las instrucciones cortas arriba del tablero." }),
+        el("li", { text: "Si te equivocas, intenta otra vez sin penalizacion." }),
+      ]),
     ]),
   );
 
   root.append(
     el("section", { class: "panel card stack" }, [
-      el("div", { class: "label", text: "Progreso" }),
-      el("div", { class: "statGrid" }, [
+      el("div", { class: "label", text: "Juegos" }),
+      el(
+        "div",
+        { class: "gameList" },
+        games.map((game) =>
+          gameCard({
+            title: game.title,
+            subtitle: game.subtitle,
+            meta: buildMeta(game),
+            tone: game.tone,
+            icon: game.icon,
+            onClick: () => navigate(game.id),
+          }),
+        ),
+      ),
+    ]),
+  );
+
+  root.append(
+    el("details", { class: "panel card collapseToggle" }, [
+      el("summary", { class: "collapseSummary" }, "Progreso"),
+      el("div", { class: "statGrid collapseBody" }, [
         stat("Parejas", games[0].bestLabel),
         stat("Objeto", games[1].bestLabel),
         stat("Simon", games[2].bestLabel),
@@ -104,6 +124,7 @@ function gameCard({ title, subtitle, meta, icon, onClick, tone }) {
       class: `gameCard tone-${tone}`,
       type: "button",
       onclick: onClick,
+      "aria-label": `${title}. ${subtitle}`,
     },
     [
       el("span", { class: "gameIcon", "aria-hidden": "true" }, icon),
@@ -112,7 +133,7 @@ function gameCard({ title, subtitle, meta, icon, onClick, tone }) {
         el("span", { class: "gameSubtitle", text: subtitle }),
         el("span", { class: "gameMeta", text: meta }),
       ]),
-      el("span", { class: "gameArrow", "aria-hidden": "true" }, "→"),
+      el("span", { class: "gameArrow", "aria-hidden": "true" }, "Comenzar"),
     ],
   );
 }

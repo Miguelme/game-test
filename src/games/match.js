@@ -13,6 +13,7 @@ export function mountMatchGame(root, { storage, audio }) {
   let lock = false;
   let firstPick = null;
   let secondPick = null;
+  const turnMessage = "Tu turno. Toca dos cartas para formar una pareja.";
 
   const progress = storage.getProgress("match");
   const currentLevel = clamp(progress.currentLevel ?? 1, 1, LEVELS.length);
@@ -23,12 +24,17 @@ export function mountMatchGame(root, { storage, audio }) {
   const footer = el("div", { class: "stack", style: "margin-top:12px" });
   root.append(header, board, footer);
 
+  let finishedLevel = false;
   let hintUsed = false;
   let matchedCount = 0;
   let totalPairs = 0;
   let cards = [];
   let reveal = new Set();
   let matched = new Set();
+  let statusMsg = null;
+  let statusText = null;
+  let previewFill = null;
+  let previewAnimId = 0;
 
   renderLevel(currentLevel);
 
@@ -42,6 +48,7 @@ export function mountMatchGame(root, { storage, audio }) {
     firstPick = null;
     secondPick = null;
     hintUsed = false;
+    finishedLevel = false;
     matchedCount = 0;
     reveal = new Set();
     matched = new Set();
@@ -53,15 +60,24 @@ export function mountMatchGame(root, { storage, audio }) {
     const iconPool = shuffle(ICONS).slice(0, totalPairs);
     cards = shuffle([...iconPool, ...iconPool].map((i, idx) => ({ ...i, idx })));
 
+    statusText = el("span", { class: "matchStatusText", text: "Las cartas se muestran un momento para memorizar." });
+    previewFill = el("span", { class: "previewProgressFill" });
+    const previewTrack = el("span", { class: "previewProgressTrack", "aria-hidden": "true" }, previewFill);
+    statusMsg = el(
+      "div",
+      { class: "msg matchStatus", role: "status", "aria-live": "polite" },
+      [statusText, previewTrack],
+    );
     header.append(
       el("div", { class: "row" }, [
         el("span", { class: "pill" }, `Nivel ${spec.level} de ${LEVELS.length}`),
         el("span", { class: "pill" }, `Parejas: ${matchedCount} / ${totalPairs}`),
       ]),
-      el("div", { class: "msg" }, "Las cartas se verán un momento al empezar."),
+      statusMsg,
     );
 
     board.style.gridTemplateColumns = `repeat(${spec.cols}, 1fr)`;
+    board.setAttribute("aria-label", `Tablero de nivel ${spec.level}`);
     for (let i = 0; i < cards.length; i++) {
       const btn = el("button", {
         class: "tile",
@@ -83,7 +99,7 @@ export function mountMatchGame(root, { storage, audio }) {
           hintUsed = true;
           hintBtn.setAttribute("disabled", "true");
           hintBtn.textContent = "Pista usada";
-          showAllBriefly(1200);
+          showAllBriefly(1200, "Mira rapido las cartas");
         },
       },
       "Ver una pista",
@@ -98,17 +114,17 @@ export function mountMatchGame(root, { storage, audio }) {
           type: "button",
           onclick: () => renderLevel(levelNum),
         },
-        "Reiniciar nivel",
+        "Reiniciar",
       ),
     );
 
     // Initial preview scales with level: 1 second per card.
-    await showAllBriefly(cards.length * 1000, "Memoriza…");
+    await showAllBriefly(cards.length * 1000, "Memoriza las cartas");
   }
 
   async function showAllBriefly(ms, label = "") {
     if (disposed) return;
-    setPreviewMode(true, label);
+    setPreviewMode(true, label, ms);
     const all = new Set(cards.map((_, i) => i));
     reveal = new Set([...reveal, ...all]);
     paint();
@@ -119,17 +135,21 @@ export function mountMatchGame(root, { storage, audio }) {
     setPreviewMode(false);
   }
 
-  function setPreviewMode(on, label) {
+  function setPreviewMode(on, label, durationMs = 0) {
     if (on) {
       lock = true;
       board.classList.add("matchShowing");
-      board.setAttribute("data-mode", label || "Memoriza…");
+      if (statusMsg) statusMsg.classList.add("isPreview");
+      setStatus(label || "Memoriza las cartas");
+      startPreviewProgress(durationMs);
       board.querySelectorAll("button.tile").forEach((b) => b.setAttribute("disabled", "true"));
       return;
     }
 
+    stopPreviewProgress();
     board.classList.remove("matchShowing");
-    board.setAttribute("data-mode", "");
+    if (statusMsg) statusMsg.classList.remove("isPreview");
+    setStatus(turnMessage);
     board.querySelectorAll("button.tile").forEach((b) => b.removeAttribute("disabled"));
     // Keep matched tiles non-interactive.
     matched.forEach((i) => {
@@ -187,6 +207,40 @@ export function mountMatchGame(root, { storage, audio }) {
     if (pills[1]) pills[1].textContent = `Parejas: ${matchedCount} / ${totalPairs}`;
   }
 
+  function setStatus(text) {
+    if (statusText) statusText.textContent = text;
+  }
+
+  function startPreviewProgress(durationMs) {
+    stopPreviewProgress();
+    if (!previewFill || durationMs <= 0) return;
+
+    const startAt = performance.now();
+    previewFill.style.width = "100%";
+
+    const tick = (now) => {
+      if (disposed || !previewFill) return;
+      const elapsed = Math.min(durationMs, now - startAt);
+      const left = Math.max(0, 100 - (elapsed / durationMs) * 100);
+      previewFill.style.width = `${left}%`;
+      if (elapsed < durationMs) {
+        previewAnimId = requestAnimationFrame(tick);
+      } else {
+        previewAnimId = 0;
+      }
+    };
+
+    previewAnimId = requestAnimationFrame(tick);
+  }
+
+  function stopPreviewProgress() {
+    if (previewAnimId) {
+      cancelAnimationFrame(previewAnimId);
+      previewAnimId = 0;
+    }
+    if (previewFill) previewFill.style.width = "0%";
+  }
+
   function paint() {
     const nodes = board.querySelectorAll("button.tile");
     nodes.forEach((node) => {
@@ -197,11 +251,13 @@ export function mountMatchGame(root, { storage, audio }) {
       node.setAttribute("aria-disabled", isDone ? "true" : "false");
       node.innerHTML = isUp ? cards[i].svg : `<div class="back" aria-hidden="true"></div>`;
       node.style.opacity = isDone ? "0.82" : "1";
-      node.style.borderColor = isDone ? "rgba(42,157,143,0.55)" : "var(--border)";
+      node.style.borderColor = isDone ? "rgba(15,95,168,0.55)" : "var(--line-strong)";
     });
   }
 
   function onWin(levelNum) {
+    if (finishedLevel) return;
+    finishedLevel = true;
     const p = storage.getProgress("match");
     const nextBest = Math.max(p.bestLevel ?? 0, levelNum);
     const nextCurrent = clamp(levelNum + 1, 1, LEVELS.length);
@@ -233,5 +289,6 @@ export function mountMatchGame(root, { storage, audio }) {
 
   return () => {
     disposed = true;
+    stopPreviewProgress();
   };
 }

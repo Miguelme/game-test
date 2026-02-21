@@ -1,4 +1,4 @@
-import { clear, el, sleep } from "../ui/dom.js";
+import { el, sleep } from "../ui/dom.js";
 import { clamp } from "./shared.js";
 
 const PADS = [
@@ -8,6 +8,8 @@ const PADS = [
   { id: "ink", label: "Gris", color: "rgba(45,45,45,0.14)", border: "rgba(45,45,45,0.35)", freq: 329.63 },
 ];
 
+const WATCH_STEP_MS = 1320;
+
 export function mountSimonGame(root, { storage, audio }) {
   let disposed = false;
   let showing = false;
@@ -15,16 +17,31 @@ export function mountSimonGame(root, { storage, audio }) {
   let sequence = [];
   let inputIndex = 0;
   let bestLen = storage.getProgress("simon").bestLen ?? 0;
+  let previewAnimId = 0;
 
   const header = el("div", { class: "stack", style: "margin-bottom:12px" });
   const board = el("div", {
     class: "grid simonBoard",
     style: "grid-template-columns: 1fr 1fr",
-    "data-mode": "",
-    "data-turn": "",
   });
   const footer = el("div", { class: "stack", style: "margin-top:12px" });
   root.append(header, board, footer);
+
+  const lengthPill = el("span", { class: "pill" }, "Longitud: 1");
+  const bestPill = el("span", { class: "pill" }, `Mejor: ${bestLen}`);
+  const statusText = el(
+    "span",
+    { class: "matchStatusText" },
+    '1) Mira la secuencia. 2) Repite el orden. 3) Usa "Mostrar otra vez" cuando quieras.',
+  );
+  const previewFill = el("span", { class: "previewProgressFill" });
+  const previewTrack = el("span", { class: "previewProgressTrack", "aria-hidden": "true" }, previewFill);
+  const statusMsg = el("div", { class: "msg matchStatus", role: "status", "aria-live": "polite" }, [
+    statusText,
+    previewTrack,
+  ]);
+
+  header.append(el("div", { class: "row" }, [lengthPill, bestPill]), statusMsg);
 
   const pads = PADS.map((p, idx) => {
     const b = el(
@@ -36,7 +53,7 @@ export function mountSimonGame(root, { storage, audio }) {
         onclick: () => onPad(idx),
         style: `background: ${p.color}; border-color: ${p.border}; min-height: 96px;`,
       },
-      el("div", { style: "font-weight:700;font-size:1.1rem" }, p.label),
+      el("div", { class: "simonPadLabel" }, p.label),
     );
     return b;
   });
@@ -58,8 +75,6 @@ export function mountSimonGame(root, { storage, audio }) {
 
   function setMode(mode) {
     if (mode === "watch") {
-      board.setAttribute("data-mode", "Mirando… (espera)");
-      board.setAttribute("data-turn", "");
       board.classList.add("simonShowing");
       board.classList.remove("simonTurn");
       pads.forEach((p) => p.setAttribute("disabled", "true"));
@@ -68,8 +83,6 @@ export function mountSimonGame(root, { storage, audio }) {
     }
 
     if (mode === "turn") {
-      board.setAttribute("data-mode", "");
-      board.setAttribute("data-turn", "Tu turno");
       board.classList.remove("simonShowing");
       board.classList.add("simonTurn");
       pads.forEach((p) => p.removeAttribute("disabled"));
@@ -78,8 +91,6 @@ export function mountSimonGame(root, { storage, audio }) {
     }
 
     // idle
-    board.setAttribute("data-mode", "");
-    board.setAttribute("data-turn", "");
     board.classList.remove("simonShowing");
     board.classList.remove("simonTurn");
     pads.forEach((p) => p.removeAttribute("disabled"));
@@ -90,25 +101,22 @@ export function mountSimonGame(root, { storage, audio }) {
     sequence = [randPad()];
     inputIndex = 0;
     accepting = false;
-    updateHeader();
+    setPreviewState(false);
+    updateHeader(
+      '1) Mira la secuencia. 2) Repite el orden. 3) Usa "Mostrar otra vez" cuando quieras.',
+      "info",
+    );
     await sleep(250);
     showSequence();
   }
 
   function updateHeader(msg, tone = "info") {
-    clear(header);
-    const msgClass = tone === "ok" ? "msg msg--ok" : tone === "bad" ? "msg msg--bad" : "msg";
-    header.append(
-      el("div", { class: "row" }, [
-        el("span", { class: "pill" }, `Longitud: ${sequence.length}`),
-        el("span", { class: "pill" }, `Mejor: ${bestLen}`),
-      ]),
-      el(
-        "div",
-        { class: msgClass },
-        msg ?? '1) Mira la secuencia. 2) Toca las flores en el mismo orden. 3) Pulsa "Mostrar otra vez" si lo necesitas.',
-      ),
-    );
+    lengthPill.textContent = `Longitud: ${sequence.length}`;
+    bestPill.textContent = `Mejor: ${bestLen}`;
+    statusMsg.classList.remove("msg--ok", "msg--bad");
+    if (tone === "ok") statusMsg.classList.add("msg--ok");
+    if (tone === "bad") statusMsg.classList.add("msg--bad");
+    statusText.textContent = msg;
   }
 
   async function showSequence() {
@@ -117,17 +125,21 @@ export function mountSimonGame(root, { storage, audio }) {
     setMode("watch");
     accepting = false;
     inputIndex = 0;
-    updateHeader("Mirando…");
+
+    setPreviewState(true, sequence.length * WATCH_STEP_MS);
+    updateHeader("Mira la secuencia.", "info");
 
     for (const idx of sequence) {
       if (disposed) return;
       await flash(idx);
       await sleep(420);
     }
+
+    setPreviewState(false);
     showing = false;
     accepting = true;
     setMode("turn");
-    updateHeader("Tu turno. Sin prisa.");
+    updateHeader("Tu turno. Repite el mismo orden.", "info");
   }
 
   async function onPad(idx) {
@@ -137,7 +149,7 @@ export function mountSimonGame(root, { storage, audio }) {
     if (idx !== sequence[inputIndex]) {
       audio.gentleNo();
       board.classList.add("simonBad");
-      updateHeader("No era esa. Vamos a mirarlo otra vez.", "bad");
+      updateHeader("No era ese color. Vamos a verla otra vez.", "bad");
       accepting = false;
       setMode("watch");
       await sleep(650);
@@ -152,7 +164,7 @@ export function mountSimonGame(root, { storage, audio }) {
       bestLen = Math.max(bestLen, sequence.length);
       persist();
       board.classList.add("simonOk");
-      updateHeader("¡Muy bien! Uno más.", "ok");
+      updateHeader("Muy bien. Agregamos un color mas.", "ok");
       accepting = false;
       await sleep(500);
       board.classList.remove("simonOk");
@@ -161,7 +173,7 @@ export function mountSimonGame(root, { storage, audio }) {
       return;
     }
 
-    updateHeader("Correcto. Sigue.", "ok");
+    updateHeader("Correcto. Continua.", "ok");
   }
 
   async function flash(idx, userTap = false) {
@@ -170,6 +182,49 @@ export function mountSimonGame(root, { storage, audio }) {
     audio.note(PADS[idx].freq);
     await sleep(userTap ? 260 : 900);
     pad.classList.remove("isActive");
+  }
+
+  function setPreviewState(on, durationMs = 0) {
+    if (!previewFill) return;
+
+    if (!on) {
+      statusMsg.classList.remove("isPreview");
+      stopPreviewProgress();
+      return;
+    }
+
+    statusMsg.classList.add("isPreview");
+    startPreviewProgress(durationMs);
+  }
+
+  function startPreviewProgress(durationMs) {
+    stopPreviewProgress();
+    if (durationMs <= 0) return;
+
+    const startAt = performance.now();
+    previewFill.style.width = "100%";
+
+    const tick = (now) => {
+      if (disposed) return;
+      const elapsed = Math.min(durationMs, now - startAt);
+      const left = Math.max(0, 100 - (elapsed / durationMs) * 100);
+      previewFill.style.width = `${left}%`;
+      if (elapsed < durationMs) {
+        previewAnimId = requestAnimationFrame(tick);
+      } else {
+        previewAnimId = 0;
+      }
+    };
+
+    previewAnimId = requestAnimationFrame(tick);
+  }
+
+  function stopPreviewProgress() {
+    if (previewAnimId) {
+      cancelAnimationFrame(previewAnimId);
+      previewAnimId = 0;
+    }
+    previewFill.style.width = "0%";
   }
 
   function persist() {
@@ -187,5 +242,6 @@ export function mountSimonGame(root, { storage, audio }) {
 
   return () => {
     disposed = true;
+    stopPreviewProgress();
   };
 }

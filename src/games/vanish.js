@@ -32,7 +32,7 @@ export function mountVanishGame(root, { storage, audio }) {
         el("span", { class: "pill" }, `Objetos: ${level}`),
         el("span", { class: "pill" }, `Racha: ${correctStreak}`),
       ]),
-      el("div", { class: "msg" }, "Mira los objetos. Cuando estés listo, toca Listo."),
+      el("div", { class: "msg", role: "status", "aria-live": "polite" }, "Mira los objetos. Toca Listo cuando los recuerdes."),
     );
 
     roundItems = shuffle(ICONS).slice(0, level);
@@ -91,10 +91,10 @@ export function mountVanishGame(root, { storage, audio }) {
     );
 
     panel.append(
-      el("div", { class: "msg" }, "¿Cuál objeto falta?"),
+      el("div", { class: "msg", role: "status", "aria-live": "polite" }, "Ahora elige el objeto que falta."),
       grid,
       el("div", { class: "row" }, [
-        el("div", { class: "hint", text: "¿Necesitas mirar otra vez?" }),
+        el("div", { class: "hint", text: "Puedes ver los objetos una vez mas." }),
         hintBtn,
       ]),
       options(questionState.optionsList, (picked) => onPick(picked)),
@@ -222,11 +222,14 @@ function options(items, onPick) {
       el(
         "button",
         {
-          class: "btn small",
+          class: "btn optionBtn",
           type: "button",
           onclick: () => onPick(it),
         },
-        it.label,
+        [
+          el("span", { class: "optionIcon", "aria-hidden": "true" }, html(it.svg)),
+          el("span", { class: "optionLabel", text: it.label }),
+        ],
       ),
     );
   }

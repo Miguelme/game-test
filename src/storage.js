@@ -18,6 +18,7 @@ const defaultSettings = {
   textScale: 1,
   sound: true,
   reduceMotion: false,
+  highContrast: false,
 };
 
 export const storage = {
@@ -29,6 +30,7 @@ export const storage = {
       textScale: clampNumber(v?.textScale ?? defaultSettings.textScale, 0.95, 1.25),
       sound: Boolean(v?.sound ?? defaultSettings.sound),
       reduceMotion: Boolean(v?.reduceMotion ?? defaultSettings.reduceMotion),
+      highContrast: Boolean(v?.highContrast ?? defaultSettings.highContrast),
     };
   },
   setSettings(next) {

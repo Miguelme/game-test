@@ -7,9 +7,12 @@ export async function renderSettings(root, { getSettings, setSettings, navigate 
     el("header", { class: "hero" }, [
       el("div", { class: "heroTop" }, [
         el("h1", { class: "title", text: "Ajustes" }),
-        el("span", { class: "chip" }, "Personaliza"),
+        el("span", { class: "chip" }, "Accesibilidad"),
       ]),
-      el("p", { class: "subtitle", text: "Ajusta el tamano, sonido y movimiento para jugar comodo." }),
+      el("p", {
+        class: "subtitle",
+        text: "Configura lectura, contraste y movimiento para jugar con comodidad.",
+      }),
     ]),
   );
 
@@ -19,7 +22,7 @@ export async function renderSettings(root, { getSettings, setSettings, navigate 
   panel.append(
     settingGroup(
       "Tamano de texto",
-      "Sube el tamano si prefieres leer con menos esfuerzo.",
+      "Aumenta el tamano para leer y tocar mejor.",
       segmented({
         options: [
           { label: "Normal", value: 1 },
@@ -32,8 +35,19 @@ export async function renderSettings(root, { getSettings, setSettings, navigate 
       }),
     ),
     settingGroup(
+      "Contraste alto",
+      "Sube contraste de texto, bordes y botones para ver mejor.",
+      toggle({
+        labelOn: "Activado",
+        labelOff: "Normal",
+        value: s.highContrast,
+        ariaLabel: "Contraste alto",
+        onChange: (v) => setSettings({ ...getSettings(), highContrast: v }),
+      }),
+    ),
+    settingGroup(
       "Sonidos",
-      "Activa tonos suaves cuando aciertas.",
+      "Activa tonos cortos para confirmar aciertos y errores.",
       toggle({
         labelOn: "Activado",
         labelOff: "Silencio",
@@ -44,7 +58,7 @@ export async function renderSettings(root, { getSettings, setSettings, navigate 
     ),
     settingGroup(
       "Reducir movimiento",
-      "Disminuye animaciones para una vista mas estable.",
+      "Reduce animaciones para evitar distracciones.",
       toggle({
         labelOn: "Reducido",
         labelOff: "Normal",
@@ -53,16 +67,16 @@ export async function renderSettings(root, { getSettings, setSettings, navigate 
         onChange: (v) => setSettings({ ...getSettings(), reduceMotion: v }),
       }),
     ),
-    el("button", { class: "btn small", type: "button", onclick: () => navigate("home") }, "Volver al inicio"),
+    el("button", { class: "btn", type: "button", onclick: () => navigate("home") }, "Volver al inicio"),
   );
 
   return () => {};
 }
 
 function settingGroup(title, hint, control) {
-  return el("div", { class: "settingCard" }, [
+  return el("section", { class: "settingCard" }, [
     el("div", { class: "label", text: title }),
-    el("div", { class: "hint", text: hint }),
+    el("p", { class: "hint", text: hint }),
     el("div", { class: "settingControl" }, control),
   ]);
 }
@@ -80,7 +94,7 @@ function segmented({ options, value, onChange, ariaLabel }) {
       el(
         "button",
         {
-          class: `btn small ${selected ? "primary" : ""}`,
+          class: `btn ${selected ? "primary" : ""}`,
           type: "button",
           "aria-pressed": selected ? "true" : "false",
           onclick: () => onChange(opt.value),
@@ -101,7 +115,7 @@ function toggle({ value, onChange, labelOn, labelOff, ariaLabel }) {
       el(
         "button",
         {
-          class: `btn small ${value ? "primary" : ""}`,
+          class: `btn ${value ? "primary" : ""}`,
           type: "button",
           "aria-pressed": value ? "true" : "false",
           onclick: () => onChange(true),
@@ -111,7 +125,7 @@ function toggle({ value, onChange, labelOn, labelOff, ariaLabel }) {
       el(
         "button",
         {
-          class: `btn small ${!value ? "primary" : ""}`,
+          class: `btn ${!value ? "primary" : ""}`,
           type: "button",
           "aria-pressed": !value ? "true" : "false",
           onclick: () => onChange(false),

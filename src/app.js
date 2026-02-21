@@ -52,4 +52,5 @@ let restTimerId = window.setTimeout(() => {
 function applySettings(s) {
   document.documentElement.style.setProperty("--font-scale", String(s.textScale));
   document.documentElement.style.setProperty("--motion-ok", s.reduceMotion ? "0" : "1");
+  document.documentElement.setAttribute("data-contrast", s.highContrast ? "1" : "0");
 }
